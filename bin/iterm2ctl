@@ -1,0 +1,498 @@
+#!/usr/bin/env ruby
+# frozen_string_literal: true
+
+require "json"
+require "optparse"
+
+$LOAD_PATH.unshift File.expand_path("../lib", __dir__)
+require "iterm2"
+
+module ITerm2CTL
+  module_function
+
+  def run(args = ARGV)
+    command = args.shift
+    case command
+    when "list"      then cmd_list(args)
+    when "send"      then cmd_send(args)
+    when "read"      then cmd_read(args)
+    when "raise"     then cmd_raise(args)
+    when "create"    then cmd_create(args)
+    when "split"     then cmd_split(args)
+    when "close"     then cmd_close(args)
+    when "var"       then cmd_var(args)
+    when "info"      then cmd_info(args)
+    when "focus"     then cmd_focus(args)
+    when "prompt"    then cmd_prompt(args)
+    when "watch"     then cmd_watch(args)
+    when "profile"   then cmd_profile(args)
+    when "inject"    then cmd_inject(args)
+    when "profiles"  then cmd_profiles(args)
+    when "version"   then puts "iterm2ctl #{ITerm2::VERSION}"
+    when "help", nil then usage
+    else
+      $stderr.puts "Unknown command: #{command}"
+      usage
+      exit 1
+    end
+  rescue ITerm2::ConnectionError => e
+    $stderr.puts "Connection error: #{e.message}"
+    exit 2
+  rescue ITerm2::AuthError => e
+    $stderr.puts "Auth error: #{e.message}"
+    exit 3
+  rescue ITerm2::NotFoundError => e
+    $stderr.puts "Not found: #{e.message}"
+    exit 4
+  rescue ITerm2::RPCError => e
+    $stderr.puts "RPC error: #{e.message}"
+    exit 5
+  end
+
+  def usage
+    puts <<~HELP
+      Usage: iterm2ctl <command> [options]
+
+      Commands:
+        list                        List all windows/tabs/sessions
+        list --with-cwd             Include working directories
+        list --with-pid             Include PIDs
+        send TEXT [--session ID]    Send text to a session
+        read [--session ID]         Read visible screen contents
+        raise PATTERN               Raise tab matching title pattern
+        raise --cwd PATH            Raise tab by working directory
+        create [window|tab]         Create a new window or tab
+        split [--session ID]        Split the current pane
+        close [--session ID]        Close a session
+        var get NAME [--session ID] Get a variable
+        var set NAME VALUE          Set a variable (user.* only)
+        var all [--session ID]      Dump all variables
+        info [--session ID]         Show session tty, pid, cwd, job
+        focus                       Show current focus state
+        prompt [--session ID]       Show prompt state (editing/running/finished)
+        watch [TYPE] [--session ID] Watch for events (focus/sessions/prompt/screen/layout)
+        profile [KEYS] [--session ID] Get profile properties
+        profiles [--properties K]   List all profiles
+        inject TEXT [--session ID]  Inject data as if from process
+        version                     Show version
+        help                        Show this help
+
+      Options:
+        --json                      Output as JSON
+        --session ID                Target session by ID
+        --tab ID                    Target tab by ID
+        --window ID                 Target window by ID
+    HELP
+  end
+
+  def cmd_list(args)
+    json_mode = args.delete("--json")
+    with_cwd = args.delete("--with-cwd")
+    with_pid = args.delete("--with-pid")
+    enriched = with_cwd || with_pid
+
+    ITerm2.connect do |client|
+      sessions = enriched ? client.topology_enriched : client.topology
+
+      if json_mode
+        puts JSON.pretty_generate(sessions)
+      else
+        if sessions.empty?
+          puts "No sessions found"
+          return
+        end
+
+        if enriched
+          fmt = "%-38s %-30s"
+          fmt += " %-30s" if with_cwd
+          fmt += " %-8s" if with_pid
+          header_args = ["Session", "Title"]
+          header_args << "CWD" if with_cwd
+          header_args << "PID" if with_pid
+          puts format(fmt, *header_args)
+          puts "-" * (70 + (with_cwd ? 32 : 0) + (with_pid ? 10 : 0))
+          sessions.each do |s|
+            row = [s[:session_id], s[:title]&.slice(0, 29)]
+            row << s[:cwd]&.slice(0, 29) if with_cwd
+            row << s[:pid].to_s if with_pid
+            puts format(fmt, *row)
+          end
+        else
+          puts format("%-12s %-12s %-38s %s", "Window", "Tab", "Session", "Title")
+          puts "-" * 90
+          sessions.each do |s|
+            puts format("%-12s %-12s %-38s %s",
+              s[:window_id], s[:tab_id], s[:session_id], s[:title])
+          end
+        end
+      end
+    end
+  end
+
+  def cmd_send(args)
+    opts = parse_target_opts(args)
+    text = args.join(" ")
+
+    if text.empty?
+      $stderr.puts "Usage: iterm2ctl send TEXT [--session ID]"
+      exit 1
+    end
+
+    # Append newline if not present (like typing a command)
+    text += "\n" unless text.end_with?("\n")
+
+    ITerm2.connect do |client|
+      session_id = resolve_session(client, opts)
+      client.send_text(session_id, text)
+      puts "Sent to #{session_id}"
+    end
+  end
+
+  def cmd_read(args)
+    opts = parse_target_opts(args)
+    json_mode = args.delete("--json")
+    trailing = nil
+
+    if (idx = args.index("--scrollback"))
+      args.delete_at(idx)
+      trailing = args.delete_at(idx)&.to_i || 100
+    end
+
+    ITerm2.connect do |client|
+      session_id = resolve_session(client, opts)
+      result = client.read_screen(session_id, trailing_lines: trailing)
+
+      if json_mode
+        puts JSON.pretty_generate(result)
+      else
+        result[:lines].each { |line| puts line }
+      end
+    end
+  end
+
+  def cmd_raise(args)
+    opts = parse_target_opts(args)
+    cwd_mode = false
+    if (idx = args.index("--cwd"))
+      args.delete_at(idx)
+      cwd_mode = true
+    end
+    pattern = args.join(" ")
+
+    if opts[:session]
+      ITerm2.connect { |c| c.activate_session(opts[:session]) }
+      puts "Raised session #{opts[:session]}"
+    elsif pattern.empty?
+      $stderr.puts "Usage: iterm2ctl raise PATTERN [--cwd] [--session ID]"
+      exit 1
+    elsif cwd_mode
+      ITerm2.connect { |c| c.raise_by_cwd(pattern) }
+      puts "Raised tab with cwd matching #{pattern.inspect}"
+    else
+      ITerm2.connect { |c| c.raise_by_title(pattern) }
+      puts "Raised tab matching #{pattern.inspect}"
+    end
+  end
+
+  def cmd_create(args)
+    opts = parse_target_opts(args)
+    type = args.shift || "tab"
+
+    ITerm2.connect do |client|
+      case type
+      when "window"
+        result = client.create_tab(profile_name: opts[:profile])
+        puts "Created window #{result[:window_id]} with session #{result[:session_id]}"
+      when "tab"
+        result = client.create_tab(window_id: opts[:window], profile_name: opts[:profile])
+        puts "Created tab #{result[:tab_id]} with session #{result[:session_id]}"
+      else
+        $stderr.puts "Usage: iterm2ctl create [window|tab]"
+        exit 1
+      end
+    end
+  end
+
+  def cmd_split(args)
+    opts = parse_target_opts(args)
+    vertical = !args.delete("--horizontal")
+
+    ITerm2.connect do |client|
+      session_id = resolve_session(client, opts)
+      new_id = client.split_pane(session_id, vertical: vertical, profile_name: opts[:profile])
+      puts "Split #{session_id} -> #{new_id}"
+    end
+  end
+
+  def cmd_close(args)
+    opts = parse_target_opts(args)
+    force = args.delete("--force")
+
+    ITerm2.connect do |client|
+      if opts[:tab]
+        client.close_tab(opts[:tab], force: !!force)
+        puts "Closed tab #{opts[:tab]}"
+      else
+        session_id = resolve_session(client, opts)
+        client.close_session(session_id, force: !!force)
+        puts "Closed session #{session_id}"
+      end
+    end
+  end
+
+  def cmd_var(args)
+    opts = parse_target_opts(args)
+    subcmd = args.shift
+
+    case subcmd
+    when "get"
+      name = args.shift
+      if name.nil?
+        $stderr.puts "Usage: iterm2ctl var get NAME [--session ID]"
+        exit 1
+      end
+      ITerm2.connect do |client|
+        scope = resolve_var_scope(client, opts)
+        val = client.get_variable(name, **scope)
+        puts val.is_a?(String) ? val : JSON.pretty_generate(val)
+      end
+
+    when "set"
+      name = args.shift
+      value = args.shift
+      if name.nil? || value.nil?
+        $stderr.puts "Usage: iterm2ctl var set NAME VALUE [--session ID]"
+        exit 1
+      end
+      ITerm2.connect do |client|
+        scope = resolve_var_scope(client, opts)
+        parsed = begin; JSON.parse(value); rescue; value; end
+        client.set_variables({ name => parsed }, **scope)
+        puts "Set #{name}"
+      end
+
+    when "all"
+      json_mode = args.delete("--json")
+      ITerm2.connect do |client|
+        scope = resolve_var_scope(client, opts)
+        all = client.get_variables("*", **scope)
+        if json_mode
+          puts JSON.pretty_generate(all)
+        else
+          all.sort_by { |k, _| k }.each do |k, v|
+            puts format("%-45s %s", k, v.is_a?(String) ? v : JSON.dump(v))
+          end
+        end
+      end
+
+    else
+      $stderr.puts "Usage: iterm2ctl var [get|set|all] ..."
+      exit 1
+    end
+  end
+
+  def cmd_info(args)
+    opts = parse_target_opts(args)
+    json_mode = args.delete("--json")
+
+    ITerm2.connect do |client|
+      session_id = resolve_session(client, opts)
+      info = client.session_info(session_id)
+
+      if json_mode
+        puts JSON.pretty_generate(info)
+      else
+        info.each do |k, v|
+          puts format("%-8s %s", "#{k}:", v || "(nil)")
+        end
+      end
+    end
+  end
+
+  def cmd_focus(args)
+    json_mode = args.delete("--json")
+
+    ITerm2.connect do |client|
+      result = client.focus
+
+      if json_mode
+        puts JSON.pretty_generate(result)
+      else
+        result.each do |k, v|
+          puts format("%-18s %s", "#{k}:", v.nil? ? "(none)" : v.to_s)
+        end
+      end
+    end
+  end
+
+  def cmd_prompt(args)
+    opts = parse_target_opts(args)
+    json_mode = args.delete("--json")
+
+    ITerm2.connect do |client|
+      session_id = resolve_session(client, opts)
+      result = client.get_prompt(session_id)
+
+      if json_mode
+        puts JSON.pretty_generate(result)
+      else
+        result.each do |k, v|
+          puts format("%-20s %s", "#{k}:", v.nil? ? "(nil)" : v.to_s)
+        end
+      end
+    end
+  end
+
+  def cmd_watch(args)
+    opts = parse_target_opts(args)
+    type = args.shift
+
+    ITerm2.connect do |client|
+      subscriptions = []
+
+      case type
+      when "focus", nil
+        subscriptions << client.on_focus_change { |n| puts JSON.dump(n) }
+      end
+
+      case type
+      when "sessions", nil
+        subscriptions << client.on_new_session { |n| puts JSON.dump(n) }
+        subscriptions << client.on_session_terminated { |n| puts JSON.dump(n) }
+      end
+
+      case type
+      when "prompt"
+        session_id = resolve_session(client, opts)
+        subscriptions << client.on_prompt_change(session_id) { |n| puts JSON.dump(n) }
+      when nil
+        # Skip prompt in watch-all (requires session_id)
+      end
+
+      case type
+      when "screen"
+        session_id = resolve_session(client, opts)
+        subscriptions << client.on_screen_update(session_id) { |n| puts JSON.dump(n) }
+      end
+
+      case type
+      when "layout", nil
+        subscriptions << client.on_layout_change { |n| puts JSON.dump(n) }
+      end
+
+      if subscriptions.empty?
+        $stderr.puts "No subscriptions created. Valid types: focus, sessions, prompt, screen, layout"
+        exit 1
+      end
+
+      $stdout.sync = true
+      $stderr.puts "Watching for #{type || 'all'} events... (Ctrl+C to stop)"
+      sleep
+    rescue Interrupt
+      $stderr.puts "\nStopping..."
+    end
+  end
+
+  def cmd_profile(args)
+    opts = parse_target_opts(args)
+    json_mode = args.delete("--json")
+    keys = args
+
+    ITerm2.connect do |client|
+      session_id = resolve_session(client, opts)
+      result = client.get_profile_property(session_id, *keys)
+
+      if json_mode
+        puts JSON.pretty_generate(result)
+      else
+        result.sort_by { |k, _| k }.each do |k, v|
+          puts format("%-40s %s", k, v.is_a?(String) ? v : JSON.dump(v))
+        end
+      end
+    end
+  end
+
+  def cmd_profiles(args)
+    json_mode = args.delete("--json")
+    properties = nil
+    if (idx = args.index("--properties"))
+      args.delete_at(idx)
+      properties = args.delete_at(idx)&.split(",")
+    end
+
+    ITerm2.connect do |client|
+      result = client.list_profiles(properties: properties)
+
+      if json_mode
+        puts JSON.pretty_generate(result)
+      else
+        result.each_with_index do |profile, i|
+          name = profile["Name"] || "(unnamed)"
+          guid = profile["Guid"] || "(no guid)"
+          puts "#{i + 1}. #{name} (#{guid})"
+        end
+      end
+    end
+  end
+
+  def cmd_inject(args)
+    opts = parse_target_opts(args)
+    text = args.join(" ")
+
+    if text.empty?
+      $stderr.puts "Usage: iterm2ctl inject TEXT [--session ID]"
+      exit 1
+    end
+
+    ITerm2.connect do |client|
+      session_id = resolve_session(client, opts)
+      client.inject(session_id, text)
+      puts "Injected to #{session_id}"
+    end
+  end
+
+  # Resolve scope for variable commands
+  def resolve_var_scope(client, opts)
+    if opts[:session]
+      { session_id: opts[:session] }
+    elsif opts[:tab]
+      { tab_id: opts[:tab] }
+    elsif opts[:window]
+      { window_id: opts[:window] }
+    else
+      # Default to first session
+      sessions = client.topology
+      raise ITerm2::NotFoundError, "No sessions found" if sessions.empty?
+      { session_id: sessions.first[:session_id] }
+    end
+  end
+
+  # Parse --session, --tab, --window, --profile from args (mutating)
+  def parse_target_opts(args)
+    opts = {}
+    %w[--session --tab --window --profile].each do |flag|
+      if (idx = args.index(flag))
+        args.delete_at(idx)
+        opts[flag.delete_prefix("--").to_sym] = args.delete_at(idx)
+      end
+    end
+    opts
+  end
+
+  # Resolve a session ID from opts, falling back to first session
+  def resolve_session(client, opts)
+    return opts[:session] if opts[:session]
+
+    sessions = client.topology
+    if opts[:tab]
+      match = sessions.find { |s| s[:tab_id] == opts[:tab] }
+      return match[:session_id] if match
+      raise ITerm2::NotFoundError, "Tab #{opts[:tab]} not found"
+    end
+
+    raise ITerm2::NotFoundError, "No sessions found" if sessions.empty?
+    sessions.first[:session_id]
+  end
+end
+
+ITerm2CTL.run
