@@ -6,6 +6,7 @@ Ruby gem + CLI (`iterm2ctl`) for controlling iTerm2 via its native WebSocket+Pro
 
 ## Read First
 
+- **`docs/api.md`** — Complete API reference (all methods, signatures, return shapes)
 - **`PLAN.md`** — Full architecture, implementation order, protobuf messages, CLI design
 
 ## Key Source Files to Reference

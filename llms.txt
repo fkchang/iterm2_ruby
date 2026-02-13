@@ -1,0 +1,113 @@
+# iterm2_ruby
+
+> Ruby gem + CLI for controlling iTerm2 via its native WebSocket + Protobuf API. ~20x faster than osascript/JXA, no focus stealing, real-time event notifications.
+
+## Install
+
+```bash
+gem install iterm2_ruby
+```
+
+Requires macOS, iTerm2 with API enabled (Preferences > General > Magic > Enable Python API), Ruby >= 3.1.
+
+## Usage: One-Shot (connect, run, disconnect)
+
+```ruby
+require "iterm2"
+
+sessions = ITerm2.topology
+ITerm2.send_text(session_id, "ls -la\n")
+screen = ITerm2.read_screen(session_id)
+ITerm2.raise_by_title("my-project")
+```
+
+## Usage: Persistent Client (reuse connection)
+
+```ruby
+ITerm2.connect do |client|
+  sessions = client.topology
+  client.send_text(sessions.first[:session_id], "make test\n")
+  client.on_focus_change { |e| puts e.inspect }
+  sleep  # keep alive for notifications
+end
+```
+
+## Core Methods
+
+### `client.topology` -> Array<Hash>
+Flat list of all sessions: `[{window_id:, tab_id:, session_id:, title:}, ...]`
+
+### `client.send_text(session_id, text, suppress_broadcast: false)` -> true/false
+Send text to a session. Does NOT auto-append `\n` -- include it to execute a command.
+
+### `client.read_screen(session_id, trailing_lines: nil)` -> Hash
+Read visible screen. Returns `{lines: ["line1", ...], cursor: {x:, y:}}`.
+Pass `trailing_lines: N` for scrollback.
+
+### `client.activate_session(session_id)` -> true/false
+Raise and focus a session (selects tab, brings window to front).
+
+### `client.raise_by_title(pattern)` -> true/false
+Find first session matching title (case-insensitive regex) and activate it.
+Raises `NotFoundError` if no match.
+
+### `client.focus` -> Hash
+Current focus: `{active_session:, active_tab:, active_window:, app_active:}`.
+
+### `client.session_info(session_id)` -> Hash
+Session details: `{tty:, pid:, cwd:, name:, job:}`.
+
+### `client.get_prompt(session_id)` -> Hash
+Prompt state: `{state:, command:, working_directory:, exit_status:}`.
+States: `:editing`, `:running`, `:at_prompt`, `:unavailable`.
+
+## Other Methods
+
+`topology_enriched`, `list_sessions`, `activate_tab`, `activate_window`,
+`raise_by_cwd`, `create_tab`, `split_pane`, `close_session`, `close_tab`,
+`set_profile_property`, `get_profile_property`, `list_profiles`, `get_property`,
+`get_variables`, `set_variables`, `inject`, `topology_for_aggregator`.
+
+## Notifications
+
+```ruby
+client.on_focus_change { |e| }       # {type: :focus, session:, ...}
+client.on_new_session { |e| }        # {type: :new_session, session_id:}
+client.on_session_terminated { |e| }  # {type: :session_terminated, session_id:}
+client.on_prompt_change(sid) { |e| }  # {type: :prompt, state:, ...}
+client.on_screen_update(sid) { |e| }  # {type: :screen_update, session:}
+client.on_layout_change { |e| }       # {type: :layout_change}
+```
+
+## CLI
+
+```bash
+iterm2ctl list              # list sessions
+iterm2ctl send "cmd"        # send text (auto-appends \n)
+iterm2ctl read              # read screen
+iterm2ctl raise "pattern"   # raise tab by title
+iterm2ctl focus             # show focus state
+iterm2ctl info              # show session details
+iterm2ctl watch             # stream events as JSON
+```
+
+Most commands accept `--session ID`, `--tab ID`, `--window ID`, `--json`.
+
+## Errors
+
+`ITerm2::ConnectionError` (can't connect), `ITerm2::AuthError` (auth failed),
+`ITerm2::RPCError` (iTerm2 error), `ITerm2::NotFoundError` (no match),
+`ITerm2::SubscriptionError` (subscribe failed). All inherit `ITerm2::Error`.
+
+## Gotchas
+
+1. `send_text` does not append `\n` -- the CLI does, the API does not.
+2. iTerm2 sends each notification twice (server-side behavior).
+3. One-shot methods open a new connection per call -- use `ITerm2.connect { }` for batches.
+
+## Documentation
+
+- [Full API Reference](docs/api.md) -- every method with signatures, return shapes, examples
+- [CLI Reference](docs/cli.md) -- every command with flags and exit codes
+- [Architecture](docs/architecture.md) -- connection lifecycle, threading, protobuf protocol
+- [README](README.md) -- quick start guide

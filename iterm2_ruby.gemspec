@@ -12,7 +12,7 @@ Gem::Specification.new do |spec|
   spec.license = "MIT"
   spec.required_ruby_version = ">= 3.1"
 
-  spec.files = Dir["lib/**/*.rb", "bin/*", "proto/*.proto", "README.md", "LICENSE", "*.gemspec", "Gemfile", "Rakefile"]
+  spec.files = Dir["lib/**/*.rb", "bin/*", "proto/*.proto", "README.md", "LICENSE", "*.gemspec", "Gemfile", "Rakefile", "llms.txt", "docs/**/*.md"]
   spec.bindir = "bin"
   spec.executables = ["iterm2ctl"]
 
