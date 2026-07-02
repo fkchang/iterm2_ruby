@@ -4,9 +4,51 @@
 [![CI](https://github.com/fkchang/iterm2_ruby/actions/workflows/ci.yml/badge.svg)](https://github.com/fkchang/iterm2_ruby/actions/workflows/ci.yml)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
 
+![Same chaos, now findable](assets/hero.jpg)
+
 Ruby gem + CLI for controlling iTerm2 via its native WebSocket + Protobuf API.
 
-**Why?** Direct API access is ~20x faster than osascript/JXA, doesn't steal window focus, and supports real-time event notifications.
+**Too many iTerms. Too many tabs. Too many agents "helping" you at once.**
+
+GenAI made you think you can do 20 things at once. It was wrong, but you did it anyway and you're still doing it, and now you've got 20 terminal windows and no idea which one's stuck waiting on you. `osascript` is too slow to keep up, steals your focus every time it tries, and nags you for an Automation permission it already has. iterm2_ruby skips all of that: it talks to iTerm2 directly, so you can actually navigate the mess you made -- ~20x faster, no focus theft, plus real-time event notifications so you don't have to go looking in the first place.
+
+## Real-World Usage
+
+Four things it's doing today, in real projects:
+
+**Jump to any running session instantly, by project name.** No window-hunting:
+
+```ruby
+ITerm2.connect { |c| c.raise_by_title(project_name) }
+```
+
+No stolen focus, no AppleScript delay -- just the right window, front and center.
+
+**A live dashboard across every open terminal.** One call returns every window, tab, and session, enriched with project name, status, cwd, and PID:
+
+```ruby
+data = ITerm2.connect { |c| c.topology_for_aggregator }
+```
+
+This feeds a real-time "mission control" view over a whole fleet of sessions.
+
+**Split a pane and pop a live browser preview next to your code:**
+
+```ruby
+ITerm2.connect do |c|
+  c.split_pane(guid, vertical: true, profile_name: "Web Browser",
+               profile_customizations: { "Initial URL" => url })
+end
+```
+
+**Spawn a background task in its own window, no permission dialogs:**
+
+```bash
+iterm2ctl create window          # => session E8F2...
+iterm2ctl send "run-task.sh" --session E8F2...
+```
+
+AppleScript automation triggers a macOS Automation prompt every time. This doesn't.
 
 ## Installation
 
