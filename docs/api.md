@@ -198,6 +198,17 @@ Closes a session. With `force: true`, skips the confirmation prompt.
 
 Closes an entire tab. With `force: true`, skips the confirmation prompt.
 
+### `client.reorder_tabs(assignments)` -> true
+
+Moves and reorders tabs across windows. `assignments` is a Hash of `{ window_id => [tab_ids] }`. Each entry defines the complete tab order for that window. A tab can be moved from one window to another by including it in the target window's list.
+
+```ruby
+# Move tab_b to window_1, placing it after tab_a
+client.reorder_tabs("window_1" => ["tab_a", "tab_b"])
+```
+
+**Raises:** `RPCError` with status `INVALID_ASSIGNMENT` (duplicate tab ID), `INVALID_WINDOW_ID`, or `INVALID_TAB_ID`.
+
 ---
 
 ## Profile & Properties

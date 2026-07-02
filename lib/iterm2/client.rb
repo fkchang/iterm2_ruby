@@ -35,6 +35,25 @@ module ITerm2
       sessions
     end
 
+    def windows
+      topology.map { |s| s[:window_id] }.uniq.map { |id| Window.new(client: self, id: id) }
+    end
+
+    def tabs(window_id: nil)
+      rows = topology
+      rows = rows.select { |s| s[:window_id] == window_id } if window_id
+      rows.map { |s| [s[:window_id], s[:tab_id]] }.uniq.map do |wid, tid|
+        Tab.new(client: self, id: tid, window_id: wid)
+      end
+    end
+
+    def sessions(window_id: nil, tab_id: nil)
+      rows = topology
+      rows = rows.select { |s| s[:window_id] == window_id } if window_id
+      rows = rows.select { |s| s[:tab_id] == tab_id } if tab_id
+      rows.map { |s| Session.new(client: self, id: s[:session_id], window_id: s[:window_id], tab_id: s[:tab_id], title: s[:title]) }
+    end
+
     # --- Session Interaction ---
 
     def send_text(session_id, text, suppress_broadcast: false)
@@ -138,6 +157,19 @@ module ITerm2
       raise RPCError, "SplitPane failed: #{resp.status}" unless resp.status == :OK
 
       resp.session_id.first
+    end
+
+    # --- ReorderTabs ---
+
+    def reorder_tabs(assignments)
+      protos = assignments.map do |window_id, tab_ids|
+        Proto::ReorderTabsRequest::Assignment.new(window_id: window_id, tab_ids: tab_ids)
+      end
+
+      resp = request(:reorder_tabs_request, Proto::ReorderTabsRequest.new(assignments: protos)).reorder_tabs_response
+      raise RPCError, "ReorderTabs failed: #{resp.status}" unless resp.status == :OK
+
+      true
     end
 
     # --- Close ---

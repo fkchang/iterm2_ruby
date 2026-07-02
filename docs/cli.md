@@ -96,6 +96,16 @@ iterm2ctl close --tab T456...             # close entire tab
 iterm2ctl close --force                   # skip confirmation
 ```
 
+### `move`
+
+Move a tab to another window.
+
+```bash
+iterm2ctl move --tab T456... --to-window W789...  # move tab to target window
+```
+
+Appends the tab to the end of the target window's tab bar. Uses `reorder_tabs` under the hood.
+
 ### `var`
 
 Get and set iTerm2 variables.

@@ -4,6 +4,9 @@ require_relative "iterm2/version"
 require_relative "iterm2/proto/api_pb"
 require_relative "iterm2/connection"
 require_relative "iterm2/client"
+require_relative "iterm2/window"
+require_relative "iterm2/tab"
+require_relative "iterm2/session"
 
 module ITerm2
   # Alias the protoc-generated Iterm2 module for internal use

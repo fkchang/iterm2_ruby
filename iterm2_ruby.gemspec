@@ -16,7 +16,9 @@ Gem::Specification.new do |spec|
   spec.bindir = "bin"
   spec.executables = ["iterm2ctl"]
 
+  # Required for encoding/decoding iTerm2 API protobuf frames.
   spec.add_dependency "google-protobuf", "~> 4.0"
-  spec.add_dependency "base64"
-  spec.add_dependency "ostruct"
+
+  # WebSocket framing is hand-rolled in lib/iterm2/connection.rb, so no websocket gem is required.
+  # base64/ostruct are stdlib in modern Ruby and intentionally not listed as gem dependencies.
 end

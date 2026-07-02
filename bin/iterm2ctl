@@ -13,13 +13,18 @@ module ITerm2CTL
   def run(args = ARGV)
     command = args.shift
     case command
-    when "list"      then cmd_list(args)
-    when "send"      then cmd_send(args)
-    when "read"      then cmd_read(args)
-    when "raise"     then cmd_raise(args)
+    when "list"             then cmd_list(args)
+    when "tabs"             then cmd_tabs(args)
+    when "send"             then cmd_send(args)
+    when "send-text"        then cmd_send_text(args)
+    when "read"             then cmd_read(args)
+    when "read-screen"      then cmd_read_screen(args)
+    when "raise"            then cmd_raise(args)
+    when "activate-session" then cmd_activate_session(args)
     when "create"    then cmd_create(args)
     when "split"     then cmd_split(args)
     when "close"     then cmd_close(args)
+    when "move"      then cmd_move(args)
     when "var"       then cmd_var(args)
     when "info"      then cmd_info(args)
     when "focus"     then cmd_focus(args)
@@ -55,15 +60,22 @@ module ITerm2CTL
 
       Commands:
         list                        List all windows/tabs/sessions
+        list --json                 JSON topology output
+        list --triage               Compact triage (window/tab/session/cwd/job)
         list --with-cwd             Include working directories
         list --with-pid             Include PIDs
+        tabs                        List tabs grouped by window
         send TEXT [--session ID]    Send text to a session
+        send-text ID TEXT           Send text to specific session
         read [--session ID]         Read visible screen contents
+        read-screen ID              Read screen for a specific session
         raise PATTERN               Raise tab matching title pattern
+        activate-session ID         Activate a session directly
         raise --cwd PATH            Raise tab by working directory
         create [window|tab]         Create a new window or tab
         split [--session ID]        Split the current pane
         close [--session ID]        Close a session
+        move --tab ID --to-window ID  Move a tab to another window
         var get NAME [--session ID] Get a variable
         var set NAME VALUE          Set a variable (user.* only)
         var all [--session ID]      Dump all variables
@@ -87,8 +99,9 @@ module ITerm2CTL
 
   def cmd_list(args)
     json_mode = args.delete("--json")
-    with_cwd = args.delete("--with-cwd")
-    with_pid = args.delete("--with-pid")
+    triage_mode = args.delete("--triage")
+    with_cwd = args.delete("--with-cwd") || triage_mode
+    with_pid = args.delete("--with-pid") || triage_mode
     enriched = with_cwd || with_pid
 
     ITerm2.connect do |client|
@@ -96,6 +109,18 @@ module ITerm2CTL
 
       if json_mode
         puts JSON.pretty_generate(sessions)
+      elsif triage_mode
+        puts format("%-10s %-10s %-38s %-30s %-10s %-18s", "Window", "Tab", "Session", "CWD", "PID", "Job")
+        puts "-" * 130
+        sessions.each do |s|
+          puts format("%-10s %-10s %-38s %-30s %-10s %-18s",
+            s[:window_id],
+            s[:tab_id],
+            s[:session_id],
+            (s[:cwd] || "")[0, 30],
+            s[:pid],
+            (s[:job] || "")[0, 18])
+        end
       else
         if sessions.empty?
           puts "No sessions found"
@@ -127,6 +152,78 @@ module ITerm2CTL
         end
       end
     end
+  end
+
+  def cmd_tabs(args)
+    json_mode = args.delete("--json")
+
+    ITerm2.connect do |client|
+      grouped = client.topology.group_by { |s| s[:window_id] }
+      if json_mode
+        output = grouped.transform_values do |rows|
+          rows.group_by { |s| s[:tab_id] }.transform_values do |tab_rows|
+            {
+              session_count: tab_rows.count,
+              sessions: tab_rows.map { |r| { session_id: r[:session_id], title: r[:title] } }
+            }
+          end
+        end
+        puts JSON.pretty_generate(output)
+      else
+        grouped.keys.sort.each do |window_id|
+          puts "Window #{window_id}"
+          grouped[window_id].group_by { |s| s[:tab_id] }.each do |tab_id, tab_rows|
+            first_title = tab_rows.first[:title]
+            puts "  Tab #{tab_id} (#{tab_rows.count} session#{tab_rows.count == 1 ? '' : 's'}) - #{first_title}"
+          end
+        end
+      end
+    end
+  end
+
+  def cmd_send_text(args)
+    session_id = args.shift
+    text = args.join(" ")
+    if session_id.nil? || text.empty?
+      $stderr.puts "Usage: iterm2ctl send-text SESSION_ID TEXT"
+      exit 1
+    end
+
+    ITerm2.connect do |client|
+      client.send_text(session_id, text.end_with?("\n") ? text : "#{text}\n")
+      puts "Sent to #{session_id}"
+    end
+  end
+
+  def cmd_read_screen(args)
+    session_id = args.shift
+    if session_id.nil?
+      $stderr.puts "Usage: iterm2ctl read-screen SESSION_ID [--json] [--scrollback N]"
+      exit 1
+    end
+
+    json_mode = args.delete("--json")
+    trailing = nil
+    if (idx = args.index("--scrollback"))
+      args.delete_at(idx)
+      trailing = args.delete_at(idx)&.to_i || 100
+    end
+
+    ITerm2.connect do |client|
+      result = client.read_screen(session_id, trailing_lines: trailing)
+      json_mode ? (puts JSON.pretty_generate(result)) : result[:lines].each { |line| puts line }
+    end
+  end
+
+  def cmd_activate_session(args)
+    session_id = args.shift
+    if session_id.nil?
+      $stderr.puts "Usage: iterm2ctl activate-session SESSION_ID"
+      exit 1
+    end
+
+    ITerm2.connect { |client| client.activate_session(session_id) }
+    puts "Activated #{session_id}"
   end
 
   def cmd_send(args)
@@ -237,6 +334,31 @@ module ITerm2CTL
         client.close_session(session_id, force: !!force)
         puts "Closed session #{session_id}"
       end
+    end
+  end
+
+  def cmd_move(args)
+    opts = parse_target_opts(args)
+    to_window = nil
+    if (idx = args.index("--to-window"))
+      args.delete_at(idx)
+      to_window = args.delete_at(idx)
+    end
+
+    tab_id = opts[:tab]
+    if tab_id.nil? || to_window.nil?
+      $stderr.puts "Usage: iterm2ctl move --tab TAB_ID --to-window WINDOW_ID"
+      exit 1
+    end
+
+    ITerm2.connect do |client|
+      # Get current tab order for the target window, then append the moved tab
+      sessions = client.topology
+      existing_tabs = sessions.select { |s| s[:window_id] == to_window }.map { |s| s[:tab_id] }.uniq
+      new_order = existing_tabs + [tab_id]
+
+      client.reorder_tabs(to_window => new_order)
+      puts "Moved tab #{tab_id} to window #{to_window}"
     end
   end
 

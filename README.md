@@ -107,6 +107,7 @@ end
 | `create [window\|tab]` | Create a new window or tab |
 | `split` | Split the current pane |
 | `close` | Close a session |
+| `move --tab ID --to-window ID` | Move a tab to another window |
 | `var get NAME` | Get a variable |
 | `var set NAME VALUE` | Set a variable (user.* only) |
 | `var all` | Dump all variables |
@@ -162,6 +163,7 @@ Most commands accept `--session ID`, `--tab ID`, or `--window ID` to target a sp
 | `split_pane(session_id, vertical:)` | Split a pane |
 | `close_session(session_id)` | Close a session |
 | `close_tab(tab_id)` | Close a tab |
+| `reorder_tabs(window_id => [tab_ids])` | Move/reorder tabs across windows |
 
 ### Profile & Properties
 
