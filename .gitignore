@@ -5,3 +5,5 @@ tmp/
 .byebug_history
 .bundle/
 Gemfile.lock
+.claude/
+.serena/
