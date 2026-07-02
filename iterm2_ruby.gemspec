@@ -7,12 +7,17 @@ Gem::Specification.new do |spec|
   spec.version = ITerm2::VERSION
   spec.authors = ["Forrest Chang"]
   spec.summary = "Ruby bindings for iTerm2's native WebSocket+Protobuf API"
-  spec.description = "Control iTerm2 via its native API. List sessions, send text, read screens, raise tabs — all without osascript."
+  spec.description = "Control iTerm2 via its native API: list sessions, send text, read screens, and raise tabs, all without osascript."
   spec.homepage = "https://github.com/fkchang/iterm2_ruby"
   spec.license = "MIT"
   spec.required_ruby_version = ">= 3.1"
 
-  spec.files = Dir["lib/**/*.rb", "bin/*", "proto/*.proto", "README.md", "LICENSE", "*.gemspec", "Gemfile", "Rakefile", "llms.txt", "docs/**/*.md"]
+  spec.metadata["source_code_uri"] = spec.homepage
+  spec.metadata["changelog_uri"] = "#{spec.homepage}/blob/main/CHANGELOG.md"
+  spec.metadata["bug_tracker_uri"] = "#{spec.homepage}/issues"
+  spec.metadata["rubygems_mfa_required"] = "true"
+
+  spec.files = Dir["lib/**/*.rb", "bin/*", "proto/*.proto", "README.md", "CHANGELOG.md", "LICENSE", "*.gemspec", "Gemfile", "Rakefile", "llms.txt", "docs/**/*.md"]
   spec.bindir = "bin"
   spec.executables = ["iterm2ctl"]
 

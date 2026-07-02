@@ -1,5 +1,9 @@
 # iterm2_ruby
 
+[![Gem Version](https://badge.fury.io/rb/iterm2_ruby.svg)](https://badge.fury.io/rb/iterm2_ruby)
+[![CI](https://github.com/fkchang/iterm2_ruby/actions/workflows/ci.yml/badge.svg)](https://github.com/fkchang/iterm2_ruby/actions/workflows/ci.yml)
+[![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
+
 Ruby gem + CLI for controlling iTerm2 via its native WebSocket + Protobuf API.
 
 **Why?** Direct API access is ~20x faster than osascript/JXA, doesn't steal window focus, and supports real-time event notifications.
