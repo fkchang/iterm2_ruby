@@ -2,61 +2,48 @@
 
 ## What This Is
 
-Ruby gem + CLI (`iterm2ctl`) for controlling iTerm2 via its native WebSocket+Protobuf API. Replaces all JXA/osascript automation.
+Ruby gem + CLI (`iterm2ctl`) for controlling iTerm2 via its native WebSocket+Protobuf API instead of osascript/JXA.
 
 ## Read First
 
-- **`docs/api.md`** — Complete API reference (all methods, signatures, return shapes)
-- **`PLAN.md`** — Full architecture, implementation order, protobuf messages, CLI design
+- **`docs/architecture.md`** — connection/auth/dispatch design
+- **`docs/api.md`** — complete API reference (all methods, signatures, return shapes)
+- **`docs/cli.md`** — full `iterm2ctl` command reference
 
-## Key Source Files to Reference
+## Layout
 
-### Lift from StreamWeaver (working WebSocket+Protobuf code):
-- `~/work/rstreamlit/stream_weaver/lib/stream_weaver/iterm_api.rb` — Connection class (auth, handshake, framing, RPC)
-- `~/work/rstreamlit/stream_weaver/lib/stream_weaver/iterm_pb.rb` — Protobuf bindings (SplitPane, SetProfileProperty)
-- `~/work/rstreamlit/stream_weaver/lib/stream_weaver/iterm.rb` — High-level wrapper
+```
+lib/iterm2.rb                    # Entry point, ITerm2.connect, one-shot methods, error classes
+lib/iterm2/version.rb            # VERSION constant
+lib/iterm2/connection.rb         # WebSocket + auth + sync/dispatch RPC
+lib/iterm2/client.rb             # High-level API (all public methods)
+lib/iterm2/window.rb             # ITerm2::Window
+lib/iterm2/tab.rb                # ITerm2::Tab
+lib/iterm2/session.rb            # ITerm2::Session
+lib/iterm2/proto/api_pb.rb       # protoc-generated bindings from proto/api.proto
+bin/iterm2ctl                    # CLI entry point
+```
 
-### JXA scripts being replaced (reference for expected behavior):
-- `~/jxa/get-iterm-topology.js` — Full topology output format (windows → tabs → sessions with tty, cwd, pid)
-- `~/jxa/iterm-raise3.js` — Tab raise with pattern matching
+## Protocol Notes
 
-### iTerm2 protobuf definitions:
-- `https://github.com/gnachman/iTerm2/blob/master/proto/api.proto` — Canonical proto file
-- Field numbers in `ClientOriginatedMessage` oneof are critical — check the proto file
+- Transport: WebSocket on `ws://localhost:1912` (TCP) or the Unix socket iTerm2 exposes; subprotocol `api.iterm2.com`
+- Encoding: Protocol Buffers, hand-generated into `lib/iterm2/proto/api_pb.rb` from `proto/api.proto` (don't hand-write bindings; regenerate with `protoc --ruby_out` if the proto changes)
+- Auth: one-time osascript call gets a cookie+key, then it's pure WebSocket
+- Field numbers in `ClientOriginatedMessage`'s oneof matter — cross-check `proto/api.proto` when adding a request type
 
-### Integration targets (will consume this gem later):
-- `~/work/claude_code_history/lib/session_aggregator.rb` — Uses JXA topology
-- `~/work/claude_code_history/lib/session_monitor.rb` — Uses osascript for raise
+## Testing
 
-## Implementation Notes
-
-- **Ruby version:** 3.3.5 (RVM: `source ~/.rvm/scripts/rvm`)
-- **Protobuf strategy:** Hand-write proto Ruby bindings using `google-protobuf` gem DSL (like StreamWeaver does). Don't use protoc.
-- **WebSocket:** Hand-rolled (StreamWeaver already has frame encode/decode). No websocket gem needed.
-- **Auth:** One-time osascript call to get cookie+key, then pure WebSocket
-- **Test against running iTerm2** — this is a local integration, no mocking needed for spikes
-- **Protocol:** `ws://localhost:1912`, subprotocol `api.iterm2.com`
-
-## Implementation Order
-
-1. Gem skeleton + extract Connection from StreamWeaver
-2. ListSessions (replaces topology JXA)
-3. SendText + ReadScreen
-4. Activate (replaces raise JXA)
-5. CLI polish
-6. Integrate back into StreamWeaver + claude_code_history
+- `bundle exec rspec` runs the default suite (CLI subprocess specs only — no live iTerm2 required, safe for CI)
+- Specs tagged `:live` (client/connection behavior) are excluded by default; run them with a real iTerm2 running:
+  ```bash
+  ITERM2_LIVE_TESTS=1 bundle exec rspec
+  ```
+- This project tests against a real running iTerm2 rather than mocking the WebSocket — mocking the protocol would just test the mock
 
 ## Commands
 
 ```bash
-# Run tests
-bundle exec rspec
-
-# Test connection
-ruby -e "require 'iterm2'; c = ITerm2::Connection.new; puts 'connected!'; c.close"
-
-# CLI
-bundle exec iterm2ctl list
-bundle exec iterm2ctl send "echo hello" --tab 1
-bundle exec iterm2ctl raise "claude"
+bundle exec rspec                              # run tests
+bundle exec iterm2ctl list                     # exercise the CLI
+gem build iterm2_ruby.gemspec                  # verify the gem still packages cleanly
 ```

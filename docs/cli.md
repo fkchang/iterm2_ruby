@@ -29,9 +29,19 @@ iterm2ctl list --with-cwd       # add working directory column
 iterm2ctl list --with-pid       # add PID column
 iterm2ctl list --with-cwd --with-pid  # both
 iterm2ctl list --json           # JSON array output
+iterm2ctl list --triage         # compact: window/tab/session/cwd/job
 ```
 
-`--with-cwd` and `--with-pid` trigger enriched topology (one RPC per session -- slower with many sessions).
+`--with-cwd`, `--with-pid`, and `--triage` all trigger enriched topology (one RPC per session -- slower with many sessions).
+
+### `tabs`
+
+List tabs grouped by window.
+
+```bash
+iterm2ctl tabs                  # window -> tab -> session count/title
+iterm2ctl tabs --json           # JSON output
+```
 
 ### `send`
 
@@ -41,6 +51,14 @@ Send text to a session as if typed. Auto-appends `\n` if not present.
 iterm2ctl send "echo hello"               # sends to first session
 iterm2ctl send "ls -la" --session E8F2...  # sends to specific session
 iterm2ctl send "make test"                 # newline auto-appended
+```
+
+### `send-text`
+
+Send text to a specific session by ID (positional, no `--session` flag).
+
+```bash
+iterm2ctl send-text E8F2... "echo hello"
 ```
 
 ### `read`
@@ -54,6 +72,16 @@ iterm2ctl read --scrollback 200         # include 200 lines of scrollback
 iterm2ctl read --json                   # JSON with lines array + cursor
 ```
 
+### `read-screen`
+
+Read the screen for a specific session by ID (positional, no `--session` flag).
+
+```bash
+iterm2ctl read-screen E8F2...                    # visible screen
+iterm2ctl read-screen E8F2... --scrollback 200   # include scrollback
+iterm2ctl read-screen E8F2... --json             # JSON output
+```
+
 ### `raise`
 
 Raise (focus) a tab by title pattern or working directory.
@@ -62,6 +90,14 @@ Raise (focus) a tab by title pattern or working directory.
 iterm2ctl raise "my-project"              # title pattern (case-insensitive regex)
 iterm2ctl raise --cwd "/work/myproject"   # match by working directory
 iterm2ctl raise --session E8F2...         # raise specific session by ID
+```
+
+### `activate-session`
+
+Activate (raise and focus) a session by ID directly (positional, no `--session` flag).
+
+```bash
+iterm2ctl activate-session E8F2...
 ```
 
 ### `create`
@@ -198,7 +234,7 @@ iterm2ctl inject "Hello from outside" --session E8F2...
 ### `version`
 
 ```bash
-iterm2ctl version    # => iterm2ctl 0.1.0
+iterm2ctl version    # => iterm2ctl 0.2.0
 ```
 
 ### `help`

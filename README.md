@@ -1,6 +1,6 @@
 # iterm2_ruby
 
-[![Gem Version](https://badge.fury.io/rb/iterm2_ruby.svg)](https://badge.fury.io/rb/iterm2_ruby)
+[![Gem Version](https://img.shields.io/gem/v/iterm2_ruby.svg)](https://rubygems.org/gems/iterm2_ruby)
 [![CI](https://github.com/fkchang/iterm2_ruby/actions/workflows/ci.yml/badge.svg)](https://github.com/fkchang/iterm2_ruby/actions/workflows/ci.yml)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
 
@@ -104,10 +104,15 @@ end
 | `list` | List all windows/tabs/sessions |
 | `list --with-cwd` | Include working directories |
 | `list --with-pid` | Include PIDs |
+| `list --triage` | Compact triage view (window/tab/session/cwd/job) |
+| `tabs` | List tabs grouped by window |
 | `send TEXT` | Send text to a session |
+| `send-text ID TEXT` | Send text to a specific session by ID |
 | `read` | Read visible screen contents |
+| `read-screen ID` | Read screen for a specific session by ID |
 | `raise PATTERN` | Raise tab matching title pattern |
 | `raise --cwd PATH` | Raise tab by working directory |
+| `activate-session ID` | Activate a session directly by ID |
 | `create [window\|tab]` | Create a new window or tab |
 | `split` | Split the current pane |
 | `close` | Close a session |
@@ -201,6 +206,13 @@ Most commands accept `--session ID`, `--tab ID`, or `--window ID` to target a sp
 4. **Notifications**: Background dispatch thread routes events to registered callbacks
 
 No external WebSocket gems required -- framing is hand-rolled per RFC 6455.
+
+## Documentation
+
+- [`docs/cli.md`](docs/cli.md) -- full `iterm2ctl` command reference
+- [`docs/api.md`](docs/api.md) -- complete Ruby API reference
+- [`docs/architecture.md`](docs/architecture.md) -- connection, auth, and dispatch design
+- [`llms.txt`](llms.txt) -- condensed reference for LLM/agent use
 
 ## Contributing
 

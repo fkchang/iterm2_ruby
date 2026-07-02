@@ -7,3 +7,4 @@ tmp/
 Gemfile.lock
 .claude/
 .serena/
+.ruby-lsp/
