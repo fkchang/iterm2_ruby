@@ -211,6 +211,39 @@ client.reorder_tabs("window_1" => ["tab_a", "tab_b"])
 
 ---
 
+## Window Frame
+
+iTerm2 opens windows created via `create_tab`/`split_pane` at the profile's default
+size, regardless of what's inside them. These wrap the `"frame"`/`"grid_size"`
+`SetProperty`/`GetProperty` conventions so callers can size a window explicitly.
+
+### `client.window_frame(window_id)` -> Hash
+
+```ruby
+{ x: Numeric, y: Numeric, width: Numeric, height: Numeric }  # pixels
+```
+
+**Raises:** `RPCError` on failure (e.g. bogus `window_id`).
+
+### `client.set_window_frame(window_id, x:, y:, width:, height:)` -> true
+
+Moves and resizes a window. All values are pixels.
+
+```ruby
+client.set_window_frame(window_id, x: 0, y: 0, width: 1200, height: 800)
+```
+
+**Raises:** `RPCError` on failure.
+
+### `client.set_session_grid_size(session_id, columns:, rows:)` -> true
+
+Resizes a session's character grid (columns x rows), distinct from `set_window_frame`
+which sizes the window in pixels.
+
+**Raises:** `RPCError` on failure.
+
+---
+
 ## Profile & Properties
 
 ### `client.set_profile_property(session_id, key, value)` -> true | false
@@ -250,8 +283,18 @@ client.list_profiles(properties: ["Name", "Guid"])
 Gets a named property from a session or window. Returns the JSON-decoded value.
 
 ```ruby
-client.get_property("columns", session_id: sid)  # => 120
-client.get_property("frame", window_id: wid)     # => {"origin" => {...}, "size" => {...}}
+client.get_property("grid_size", session_id: sid)  # => {"width" => 80, "height" => 25}
+client.get_property("frame", window_id: wid)        # => {"origin" => {...}, "size" => {...}}
+```
+
+**Raises:** `RPCError` on failure.
+
+### `client.set_property(name, value, session_id: nil, window_id: nil)` -> true
+
+Sets a named property on a session or window. `value` is JSON-encoded before sending.
+
+```ruby
+client.set_property("frame", {origin: {x: 0, y: 0}, size: {width: 800, height: 600}}, window_id: wid)
 ```
 
 **Raises:** `RPCError` on failure.

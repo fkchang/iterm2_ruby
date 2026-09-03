@@ -21,20 +21,22 @@ module ITerm2CTL
     when "read-screen"      then cmd_read_screen(args)
     when "raise"            then cmd_raise(args)
     when "activate-session" then cmd_activate_session(args)
-    when "create"    then cmd_create(args)
-    when "split"     then cmd_split(args)
-    when "close"     then cmd_close(args)
-    when "move"      then cmd_move(args)
-    when "var"       then cmd_var(args)
-    when "info"      then cmd_info(args)
-    when "focus"     then cmd_focus(args)
-    when "prompt"    then cmd_prompt(args)
-    when "watch"     then cmd_watch(args)
-    when "profile"   then cmd_profile(args)
-    when "inject"    then cmd_inject(args)
-    when "profiles"  then cmd_profiles(args)
-    when "version"   then puts "iterm2ctl #{ITerm2::VERSION}"
-    when "help", nil then usage
+    when "create"           then cmd_create(args)
+    when "set-window-frame" then cmd_set_window_frame(args)
+    when "get-window-frame" then cmd_get_window_frame(args)
+    when "split"            then cmd_split(args)
+    when "close"            then cmd_close(args)
+    when "move"             then cmd_move(args)
+    when "var"              then cmd_var(args)
+    when "info"             then cmd_info(args)
+    when "focus"            then cmd_focus(args)
+    when "prompt"           then cmd_prompt(args)
+    when "watch"            then cmd_watch(args)
+    when "profile"          then cmd_profile(args)
+    when "inject"           then cmd_inject(args)
+    when "profiles"         then cmd_profiles(args)
+    when "version"          then puts "iterm2ctl #{ITerm2::VERSION}"
+    when "help", nil        then usage
     else
       $stderr.puts "Unknown command: #{command}"
       usage
@@ -73,6 +75,8 @@ module ITerm2CTL
         activate-session ID         Activate a session directly
         raise --cwd PATH            Raise tab by working directory
         create [window|tab]         Create a new window or tab
+        set-window-frame ID X Y W H Move/resize a window (pixels)
+        get-window-frame ID         Read a window's frame (pixels)
         split [--session ID]        Split the current pane
         close [--session ID]        Close a session
         move --tab ID --to-window ID  Move a tab to another window
@@ -306,6 +310,40 @@ module ITerm2CTL
       else
         $stderr.puts "Usage: iterm2ctl create [window|tab]"
         exit 1
+      end
+    end
+  end
+
+  def cmd_set_window_frame(args)
+    window_id, *numbers = args
+    x, y, w, h = numbers.map { |n| Integer(n, exception: false) }
+
+    if window_id.nil? || numbers.size != 4 || [x, y, w, h].any?(&:nil?)
+      $stderr.puts "Usage: iterm2ctl set-window-frame WINDOW_ID X Y WIDTH HEIGHT"
+      exit 1
+    end
+
+    ITerm2.connect do |client|
+      client.set_window_frame(window_id, x: x, y: y, width: w, height: h)
+      puts "Set frame for window #{window_id}: #{w}x#{h} at (#{x}, #{y})"
+    end
+  end
+
+  def cmd_get_window_frame(args)
+    window_id = args.shift
+    json_mode = args.delete("--json")
+
+    if window_id.nil?
+      $stderr.puts "Usage: iterm2ctl get-window-frame WINDOW_ID [--json]"
+      exit 1
+    end
+
+    ITerm2.connect do |client|
+      frame = client.window_frame(window_id)
+      if json_mode
+        puts JSON.pretty_generate(frame)
+      else
+        puts "x=#{frame[:x]} y=#{frame[:y]} width=#{frame[:width]} height=#{frame[:height]}"
       end
     end
   end

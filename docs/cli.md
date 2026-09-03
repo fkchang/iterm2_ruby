@@ -111,6 +111,28 @@ iterm2ctl create tab --window W123...     # new tab in specific window
 iterm2ctl create tab --profile "Custom"   # new tab with profile
 ```
 
+### `set-window-frame`
+
+Move and resize a window. Values are pixels.
+
+```bash
+iterm2ctl set-window-frame W123... 0 0 1200 800
+```
+
+### `get-window-frame`
+
+Read a window's current frame.
+
+```bash
+iterm2ctl get-window-frame W123...          # x=0 y=0 width=1200 height=800
+iterm2ctl get-window-frame W123... --json   # {
+                                             #   "x": 0,
+                                             #   "y": 0,
+                                             #   "width": 1200,
+                                             #   "height": 800
+                                             # }
+```
+
 ### `split`
 
 Split the current pane.

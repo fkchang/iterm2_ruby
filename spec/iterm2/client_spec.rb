@@ -55,4 +55,37 @@ RSpec.describe ITerm2::Client, :live do
       expect(profiles).not_to be_empty
     end
   end
+
+  describe "#window_frame / #set_window_frame" do
+    it "moves and resizes a window, and reads back the new frame" do
+      window_id = client.topology.first[:window_id]
+      original = client.window_frame(window_id)
+
+      target = { x: original[:x], y: original[:y], width: 900, height: 600 }
+      expect(client.set_window_frame(window_id, **target)).to be true
+
+      updated = client.window_frame(window_id)
+      expect(updated[:width]).to eq(900)
+      expect(updated[:height]).to eq(600)
+    ensure
+      client.set_window_frame(window_id, **original) if window_id && original
+    end
+  end
+
+  describe "#set_session_grid_size" do
+    it "resizes a session's character grid" do
+      session_id = client.topology.first[:session_id]
+      original = client.get_property("grid_size", session_id: session_id)
+
+      expect(client.set_session_grid_size(session_id, columns: 100, rows: 30)).to be true
+
+      updated = client.get_property("grid_size", session_id: session_id)
+      expect(updated["width"]).to eq(100)
+      expect(updated["height"]).to eq(30)
+    ensure
+      if session_id && original
+        client.set_session_grid_size(session_id, columns: original["width"], rows: original["height"])
+      end
+    end
+  end
 end

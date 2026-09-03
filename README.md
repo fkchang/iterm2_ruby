@@ -156,6 +156,8 @@ end
 | `raise --cwd PATH` | Raise tab by working directory |
 | `activate-session ID` | Activate a session directly by ID |
 | `create [window\|tab]` | Create a new window or tab |
+| `set-window-frame ID X Y W H` | Move/resize a window (pixels) |
+| `get-window-frame ID` | Read a window's frame (pixels) |
 | `split` | Split the current pane |
 | `close` | Close a session |
 | `move --tab ID --to-window ID` | Move a tab to another window |
@@ -215,6 +217,9 @@ Most commands accept `--session ID`, `--tab ID`, or `--window ID` to target a sp
 | `close_session(session_id)` | Close a session |
 | `close_tab(tab_id)` | Close a tab |
 | `reorder_tabs(window_id => [tab_ids])` | Move/reorder tabs across windows |
+| `window_frame(window_id)` | Get a window's frame (position + size, pixels) |
+| `set_window_frame(window_id, x:, y:, width:, height:)` | Move/resize a window (pixels) |
+| `set_session_grid_size(session_id, columns:, rows:)` | Set a session's grid size (columns/rows) |
 
 ### Profile & Properties
 
@@ -224,6 +229,7 @@ Most commands accept `--session ID`, `--tab ID`, or `--window ID` to target a sp
 | `get_profile_property(session_id, *keys)` | Get profile properties |
 | `list_profiles(properties:, guids:)` | List all profiles |
 | `get_property(name, session_id:)` | Get a session/window property |
+| `set_property(name, value, session_id:)` | Set a session/window property |
 | `get_variables(*names, session_id:)` | Get variables |
 | `set_variables(vars, session_id:)` | Set user variables |
 | `focus` | Get current focus state |

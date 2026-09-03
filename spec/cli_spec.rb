@@ -26,4 +26,20 @@ RSpec.describe "iterm2ctl CLI" do
       expect($?.exitstatus).to eq(1)
     end
   end
+
+  describe "set-window-frame" do
+    it "exits with a usage error when args are missing" do
+      output = `ruby #{bin} set-window-frame some-window 0 0 900 2>&1`
+      expect(output).to include("Usage:")
+      expect($?.exitstatus).to eq(1)
+    end
+  end
+
+  describe "get-window-frame" do
+    it "exits with a usage error when the window ID is missing" do
+      output = `ruby #{bin} get-window-frame 2>&1`
+      expect(output).to include("Usage:")
+      expect($?.exitstatus).to eq(1)
+    end
+  end
 end

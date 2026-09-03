@@ -383,7 +383,7 @@ module ITerm2
       end
     end
 
-    # --- GetProperty ---
+    # --- GetProperty / SetProperty ---
 
     def get_property(name, session_id: nil, window_id: nil)
       req = Proto::GetPropertyRequest.new(name: name)
@@ -394,6 +394,42 @@ module ITerm2
       raise RPCError, "GetProperty failed: #{resp.status}" unless resp.status == :OK
 
       JSON.parse(resp.json_value)
+    end
+
+    def set_property(name, value, session_id: nil, window_id: nil)
+      req = Proto::SetPropertyRequest.new(name: name, json_value: JSON.dump(value))
+      req.session_id = session_id if session_id
+      req.window_id = window_id if window_id
+
+      resp = request(:set_property_request, req).set_property_response
+      raise RPCError, "SetProperty failed: #{resp.status}" unless resp.status == :OK
+
+      true
+    end
+
+    # --- Window Frame ---
+    # Windows open at the profile's default size regardless of content; these
+    # size one explicitly via the "frame"/"grid_size" SetProperty/GetProperty
+    # conventions (see proto/api.proto).
+
+    def window_frame(window_id)
+      origin, size = get_property("frame", window_id: window_id).values_at("origin", "size")
+      { x: origin["x"], y: origin["y"], width: size["width"], height: size["height"] }
+    end
+
+    def set_window_frame(window_id, x:, y:, width:, height:)
+      set_property(
+        "frame",
+        { "origin" => { "x" => x, "y" => y }, "size" => { "width" => width, "height" => height } },
+        window_id: window_id
+      )
+    end
+
+    # Resizes a session's character grid (columns x rows). Distinct from
+    # set_window_frame -- this sizes the text grid a session renders, in
+    # cells rather than points.
+    def set_session_grid_size(session_id, columns:, rows:)
+      set_property("grid_size", { "width" => columns, "height" => rows }, session_id: session_id)
     end
 
     # --- Notifications ---

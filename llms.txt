@@ -66,6 +66,7 @@ States: `:editing`, `:running`, `:at_prompt`, `:unavailable`.
 `topology_enriched`, `list_sessions`, `activate_tab`, `activate_window`,
 `raise_by_cwd`, `create_tab`, `split_pane`, `close_session`, `close_tab`,
 `set_profile_property`, `get_profile_property`, `list_profiles`, `get_property`,
+`set_property`, `window_frame`, `set_window_frame`, `set_session_grid_size`,
 `get_variables`, `set_variables`, `inject`, `reorder_tabs`, `topology_for_aggregator`.
 
 ## Notifications
@@ -90,6 +91,8 @@ iterm2ctl focus             # show focus state
 iterm2ctl info              # show session details
 iterm2ctl move --tab ID --to-window ID  # move tab between windows
 iterm2ctl watch             # stream events as JSON
+iterm2ctl set-window-frame ID X Y W H  # move/resize a window (pixels)
+iterm2ctl get-window-frame ID          # read a window's frame (pixels)
 ```
 
 Most commands accept `--session ID`, `--tab ID`, `--window ID`, `--json`.
