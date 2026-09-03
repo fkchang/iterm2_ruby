@@ -3,6 +3,15 @@
 All notable changes to this project are documented here. Format follows
 [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
+## [Unreleased] - 0.3.1
+
+### Fixed
+- `client.get_window_frame(window_id)` restored under its documented name. A local
+  amend of the 0.3.0 commit (made before publish, after this method had already been
+  verified) silently renamed it to `client.window_frame`; the published 0.3.0 gem on
+  rubygems only exposes `window_frame` and lacks `get_window_frame`. Source is fixed
+  here; the published artifact is fixed by the next release.
+
 ## [0.3.0] - 2026-09-03
 
 ### Added

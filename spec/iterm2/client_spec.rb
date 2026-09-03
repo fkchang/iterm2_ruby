@@ -56,15 +56,15 @@ RSpec.describe ITerm2::Client, :live do
     end
   end
 
-  describe "#window_frame / #set_window_frame" do
+  describe "#get_window_frame / #set_window_frame" do
     it "moves and resizes a window, and reads back the new frame" do
       window_id = client.topology.first[:window_id]
-      original = client.window_frame(window_id)
+      original = client.get_window_frame(window_id)
 
       target = { x: original[:x], y: original[:y], width: 900, height: 600 }
       expect(client.set_window_frame(window_id, **target)).to be true
 
-      updated = client.window_frame(window_id)
+      updated = client.get_window_frame(window_id)
       expect(updated[:width]).to eq(900)
       expect(updated[:height]).to eq(600)
     ensure

@@ -412,7 +412,7 @@ module ITerm2
     # size one explicitly via the "frame"/"grid_size" SetProperty/GetProperty
     # conventions (see proto/api.proto).
 
-    def window_frame(window_id)
+    def get_window_frame(window_id)
       origin, size = get_property("frame", window_id: window_id).values_at("origin", "size")
       { x: origin["x"], y: origin["y"], width: size["width"], height: size["height"] }
     end

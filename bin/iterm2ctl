@@ -339,7 +339,7 @@ module ITerm2CTL
     end
 
     ITerm2.connect do |client|
-      frame = client.window_frame(window_id)
+      frame = client.get_window_frame(window_id)
       if json_mode
         puts JSON.pretty_generate(frame)
       else

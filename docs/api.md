@@ -217,7 +217,7 @@ iTerm2 opens windows created via `create_tab`/`split_pane` at the profile's defa
 size, regardless of what's inside them. These wrap the `"frame"`/`"grid_size"`
 `SetProperty`/`GetProperty` conventions so callers can size a window explicitly.
 
-### `client.window_frame(window_id)` -> Hash
+### `client.get_window_frame(window_id)` -> Hash
 
 ```ruby
 { x: Numeric, y: Numeric, width: Numeric, height: Numeric }  # pixels
