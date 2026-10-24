@@ -3,6 +3,17 @@
 All notable changes to this project are documented here. Format follows
 [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
+## [0.4.0] - 2026-10-23
+
+### Added
+- `client.split_browser_pane(session_id, url, vertical: true)` -- split a pane that shows a URL as a web view.
+  Uses the `"Custom Command" => "Browser"` profile override, so no "Web Browser" profile is needed.
+- `ITerm2::Browser` -- connection-free probes (`plugin_installed?`, `profiles_enabled?`, `available?`) and
+  `pane_properties(url)`. The plugin check looks in the usual install folders first and asks Spotlight only
+  as a fallback, so a plugin in those folders never depends on a Spotlight lookup. Probe commands run without a
+  shell and are terminated on timeout.
+- `ITerm2.current_session_id` -- the calling pane's session ID from `ITERM_SESSION_ID`, `nil` outside iTerm2.
+
 ## [0.3.1] - 2026-09-04
 
 ### Fixed

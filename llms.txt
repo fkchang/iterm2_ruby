@@ -64,10 +64,21 @@ States: `:editing`, `:running`, `:at_prompt`, `:unavailable`.
 ## Other Methods
 
 `topology_enriched`, `list_sessions`, `activate_tab`, `activate_window`,
-`raise_by_cwd`, `create_tab`, `split_pane`, `close_session`, `close_tab`,
+`raise_by_cwd`, `create_tab`, `split_pane`, `split_browser_pane`, `close_session`, `close_tab`,
 `set_profile_property`, `get_profile_property`, `list_profiles`, `get_property`,
 `set_property`, `window_frame`, `set_window_frame`, `set_session_grid_size`,
 `get_variables`, `set_variables`, `inject`, `reorder_tabs`, `topology_for_aggregator`.
+
+## Browser panes (split a web view beside a session)
+
+```ruby
+here = ITerm2.current_session_id    # the calling pane's id from ENV["ITERM_SESSION_ID"]; nil outside iTerm2
+if here && ITerm2::Browser.available?   # plugin installed AND browser-style profiles enabled (macOS only; no API connection)
+  ITerm2.connect { |c| c.split_browser_pane(here, "http://localhost:4579/ambient", vertical: true) }  # => new session id
+end
+```
+
+No "Web Browser" profile is needed: the method overrides the new pane's profile ("Custom Command" => "Browser", "Initial URL" => url). iTerm2's separately installed Browser Plugin must be present; `ITerm2::Browser.available?` checks that. Always pass a real session id (with nil, iTerm2 picks which pane to split). Callers keep their own platform guard and fallback (e.g. system browser off iTerm2). Never use the Python `iterm2` package.
 
 ## Notifications
 

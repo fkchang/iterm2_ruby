@@ -159,6 +159,14 @@ module ITerm2
       resp.session_id.first
     end
 
+    # --- Browser panes ---
+
+    # Splits `session_id` with a pane that shows `url` as a web view. Returns the
+    # new session ID. See ITerm2::Browser for what iTerm2 needs for this to work.
+    def split_browser_pane(session_id, url, vertical: true)
+      split_pane(session_id, vertical: vertical, profile_customizations: Browser.pane_properties(url))
+    end
+
     # --- ReorderTabs ---
 
     def reorder_tabs(assignments)

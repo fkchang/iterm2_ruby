@@ -20,6 +20,7 @@ lib/iterm2/client.rb             # High-level API (all public methods)
 lib/iterm2/window.rb             # ITerm2::Window
 lib/iterm2/tab.rb                # ITerm2::Tab
 lib/iterm2/session.rb            # ITerm2::Session
+lib/iterm2/browser.rb            # ITerm2::Browser: connection-free browser-pane probes + pane_properties
 lib/iterm2/proto/api_pb.rb       # protoc-generated bindings from proto/api.proto
 bin/iterm2ctl                    # CLI entry point
 ```
@@ -33,7 +34,7 @@ bin/iterm2ctl                    # CLI entry point
 
 ## Testing
 
-- `bundle exec rspec` runs the default suite (CLI subprocess specs only — no live iTerm2 required, safe for CI)
+- `bundle exec rspec` runs the default suite (CLI subprocess specs and the connection-free `ITerm2::Browser` / `ITerm2.current_session_id` specs — no live iTerm2 required, safe for CI)
 - Specs tagged `:live` (client/connection behavior) are excluded by default; run them with a real iTerm2 running:
   ```bash
   ITERM2_LIVE_TESTS=1 bundle exec rspec

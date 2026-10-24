@@ -28,6 +28,12 @@ Creates a persistent client with an open connection. Equivalent to `ITerm2.conne
 
 Closes the connection. Unsubscribes all notification listeners and stops the dispatch thread if running.
 
+### `ITerm2.current_session_id(env = ENV)` -> String | nil
+
+The session ID of the pane the calling process runs in: the GUID after the colon of `ITERM_SESSION_ID`
+(`"w0t0p0:<GUID>"`). `nil` outside iTerm2 or when the value is not that shape. This is the ID every
+session-targeted call takes.
+
 ---
 
 ## Topology
@@ -187,6 +193,33 @@ Splits a pane. Returns the new session ID.
 - **profile_customizations** (Hash) -- profile property overrides (key => value)
 
 **Raises:** `RPCError` on failure.
+
+### `client.split_browser_pane(session_id, url, vertical: true)` -> String
+
+Splits a pane that shows `url` as a web view (a browser pane), beside `session_id`. Returns the new session ID.
+It is `split_pane` with the profile overrides `"Custom Command" => "Browser"` and `"Initial URL" => url`, so no
+"Web Browser" profile has to be installed. iTerm2 still needs its separately installed Browser Plugin and the
+"Enable browser-style profiles" Advanced setting (on by default); check with `ITerm2::Browser.available?`.
+
+- **session_id** (String) -- session to split
+- **url** (String) -- page the pane loads
+- **vertical** (Boolean) -- `true` for a vertical split, `false` for horizontal
+
+**Raises:** `RPCError` on failure.
+
+Pass a real session ID: with `nil`, `split_pane` sends no session and iTerm2 chooses which pane to split.
+When calling with `ITerm2.current_session_id`, guard against `nil` (outside iTerm2).
+
+### `ITerm2::Browser`
+
+Connection-free checks for browser panes. Off macOS, `plugin_installed?`, `profiles_enabled?` and `available?` return `false`.
+When a check cannot tell (a failed or timed-out probe), the two differ on purpose: `plugin_installed?` returns `false`
+(a pane that cannot work should not be attempted) and `profiles_enabled?` returns `true` (the setting ships enabled).
+
+- `ITerm2::Browser.plugin_installed?` -- the Browser Plugin is in `/Applications` or `~/Applications`, or Spotlight finds it by bundle identifier
+- `ITerm2::Browser.profiles_enabled?` -- the "Enable browser-style profiles" setting is not turned off (unset counts as enabled)
+- `ITerm2::Browser.available?` -- both of the above
+- `ITerm2::Browser.pane_properties(url)` -- the profile overrides `split_browser_pane` applies; returns a Hash on every platform
 
 ### `client.close_session(session_id, force: false)` -> true | false
 

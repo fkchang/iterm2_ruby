@@ -3,6 +3,7 @@
 require_relative "iterm2/version"
 require_relative "iterm2/proto/api_pb"
 require_relative "iterm2/connection"
+require_relative "iterm2/browser"
 require_relative "iterm2/client"
 require_relative "iterm2/window"
 require_relative "iterm2/tab"
@@ -18,6 +19,18 @@ module ITerm2
   class RPCError < Error; end
   class NotFoundError < RPCError; end
   class SubscriptionError < Error; end
+
+  # The session ID of the pane the calling process runs in, or nil outside
+  # iTerm2. ITERM_SESSION_ID looks like "w0t0p0:<GUID>"; the GUID after the
+  # colon is the ID every API call takes. A value with no colon is not that
+  # shape, so it returns nil rather than a meaningless string.
+  def self.current_session_id(env = ENV)
+    raw = env["ITERM_SESSION_ID"]
+    return nil unless raw&.include?(":")
+
+    id = raw.split(":", 2).last
+    id.empty? ? nil : id
+  end
 
   # Convenience: open connection, yield client, close
   def self.connect(app_name: "iterm2_ruby")

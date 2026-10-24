@@ -8,3 +8,6 @@ Gemfile.lock
 .claude/
 .serena/
 .ruby-lsp/
+
+# Personal project-registry metadata
+.registry/

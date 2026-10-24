@@ -35,11 +35,13 @@ This feeds a real-time "mission control" view over a whole fleet of sessions.
 **Split a pane and pop a live browser preview next to your code:**
 
 ```ruby
-ITerm2.connect do |c|
-  c.split_pane(guid, vertical: true, profile_name: "Web Browser",
-               profile_customizations: { "Initial URL" => url })
+here = ITerm2.current_session_id            # nil outside iTerm2
+if here && ITerm2::Browser.available?       # Browser Plugin installed, browser-style profiles on
+  ITerm2.connect { |c| c.split_browser_pane(here, url, vertical: true) }
 end
 ```
+
+No "Web Browser" profile needs to exist; the pane's profile is overridden to show the URL.
 
 **Spawn a background task in its own window, no permission dialogs:**
 
@@ -214,6 +216,7 @@ Most commands accept `--session ID`, `--tab ID`, or `--window ID` to target a sp
 | `raise_by_cwd(pattern)` | Raise first session matching cwd |
 | `create_tab(window_id:, profile_name:)` | Create a new tab |
 | `split_pane(session_id, vertical:)` | Split a pane |
+| `split_browser_pane(session_id, url, vertical:)` | Split a pane that shows a URL as a web view (check `ITerm2::Browser.available?`) |
 | `close_session(session_id)` | Close a session |
 | `close_tab(tab_id)` | Close a tab |
 | `reorder_tabs(window_id => [tab_ids])` | Move/reorder tabs across windows |
